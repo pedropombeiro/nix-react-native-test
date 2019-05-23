@@ -13,7 +13,7 @@ let
 in mkShell' {
   buildInputs = [
     # utilities
-    bash
+    zsh
     curl
     file
     git

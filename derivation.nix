@@ -3,55 +3,35 @@
 , pkgs ? (import <nixpkgs> { inherit system config overlays; })
 , target-os }:
 
-with pkgs;
-  let
-    platform = callPackage ./nix/platform.nix { inherit target-os; };
-    # TODO: Try to use stdenv for iOS. The problem is with building iOS as the build is trying to pass parameters to Apple's ld that are meant for GNU's ld (e.g. -dynamiclib)
-    _stdenv = stdenvNoCC;
-    statusMobile = callPackage ./nix/mobile { inherit target-os config; stdenv = _stdenv; };
-    nodejs' = nodejs-10_x;
-    yarn' = yarn.override { nodejs = nodejs'; };
-    nodeInputs = import ./nix/global-node-packages/output {
-      # The remaining dependencies come from Nixpkgs
-      inherit pkgs;
-      nodejs = nodejs';
-    };
-    yarn2nix = import ( fetchFromGitHub { 
-      owner = "moretea";
-      repo = "yarn2nix";
-      rev = "3cc020e384ce2a439813adb7a0cc772a034d90bb";
-      sha256 = "0h2kzdfiw43rbiiffpqq9lkhvdv8mgzz2w29pzrxgv8d39x67vr9";
-      name = "yarn2nix-source";
-    } ) { nodejs = nodejs'; yarn = yarn'; };
-    rnPackage = yarn2nix.mkYarnPackage {
-      name = "react-native-packages";
-      src = ./.;
-      packageJson = ./package.json;
-      yarnLock = ./yarn.lock;
-      # NOTE: this is optional and generated dynamically if omitted
-      yarnNix = ./yarn.nix;
-    };    
-    nodePkgBuildInputs = [
-      nodejs'
-      python27 # for e.g. gyp
-      yarn'
-      rnPackage
-    ] ++ (builtins.attrValues nodeInputs);
-    selectedSources =
-      lib.optional platform.targetMobile statusMobile;
+let
+  platform = pkgs.callPackage ./nix/platform.nix { inherit target-os; };
+  # TODO: Try to use stdenv for iOS. The problem is with building iOS as the build is trying to pass parameters to Apple's ld that are meant for GNU's ld (e.g. -dynamiclib)
+  _stdenv = pkgs.stdenvNoCC;
+  gradle = pkgs.gradle_4_10;
+  statusMobile = pkgs.callPackage ./nix/mobile { inherit target-os config pkgs gradle; stdenv = _stdenv; nodejs = nodejs'; yarn = yarn'; };
+  nodejs' = pkgs.nodejs-10_x;
+  yarn' = pkgs.yarn.override { nodejs = nodejs'; };
+  nodePkgBuildInputs = with pkgs; [
+    nodejs'
+    python27 # for e.g. gyp
+    yarn'
+  ];
+  selectedSources =
+    _stdenv.lib.optional platform.targetMobile statusMobile;
 
-  in _stdenv.mkDerivation rec {
-    name = "nix-react-native-test-build-env";
+in with _stdenv; mkDerivation rec {
+  name = "nix-react-native-test-build-env";
 
-    buildInputs = with _stdenv; [
-      clojure
-      leiningen
-      maven
-      watchman
-    ] ++ nodePkgBuildInputs
-      ++ lib.optional isDarwin cocoapods
-      ++ lib.optional (isDarwin && !platform.targetIOS) clang
-      ++ lib.optional (!isDarwin) gcc7
-      ++ lib.catAttrs "buildInputs" selectedSources;
-    shellHook = lib.concatStrings (lib.catAttrs "shellHook" selectedSources);
-  }
+  buildInputs = with _stdenv; with pkgs; [
+    clojure
+    leiningen
+    maven
+    watchman
+    gradle openjdk
+  ] ++ nodePkgBuildInputs
+    ++ lib.optional isDarwin cocoapods
+    ++ lib.optional (isDarwin && !platform.targetIOS) clang
+    ++ lib.optional (!isDarwin) gcc7
+    ++ lib.catAttrs "buildInputs" selectedSources;
+  shellHook = lib.concatStrings (lib.catAttrs "shellHook" selectedSources);
+}

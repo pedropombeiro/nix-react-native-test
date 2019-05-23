@@ -1,16 +1,14 @@
-{ config, stdenv, pkgs, target-os }:
+{ config, stdenv, target-os, callPackage, pkgs, nodejs, yarn, gradle }:
 
-with pkgs;
 with stdenv;
 
 let
-  gradle = gradle_4_10;
-  platform = pkgs.callPackage ../platform.nix { inherit target-os; };
+  platform = callPackage ../platform.nix { inherit target-os; };
   xcodewrapperArgs = {
     version = "10.1";
   };
   xcodeWrapper = xcodeenv.composeXcodeWrapper xcodewrapperArgs;
-  androidPlatform = callPackage ./android.nix { inherit config; };
+  androidPlatform = callPackage ./android.nix { inherit config pkgs gradle nodejs; };
   selectedSources =
     lib.optional platform.targetAndroid androidPlatform;
 

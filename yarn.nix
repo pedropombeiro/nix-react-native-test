@@ -4986,13 +4986,21 @@
       };
     }
     {
-      name = "react_native___react_native_0.59.8.tgz";
-      path = fetchurl {
-        name = "react_native___react_native_0.59.8.tgz";
-        url  = "https://registry.yarnpkg.com/react-native/-/react-native-0.59.8.tgz";
-        sha1 = "ade4141c777c60f5ec4889d9811d0f80a9d56547";
-      };
-    }
+    name = "react-native.git";
+    path =
+      let
+        repo = builtins.fetchGit {
+          url = "https://github.com/status-im/react-native.git";
+          ref = "status-v0.59.3";
+          rev = "d45e1b15e331d56b115217a12f6e6c1e54da4be9";
+        };
+      in
+        runCommandNoCC "react-native.git" { buildInputs = [gnutar]; } ''
+          # Set u+w because tar-fs can't unpack archives with read-only dirs
+          # https://github.com/mafintosh/tar-fs/issues/79
+          tar cf $out --mode u+w -C ${repo} .
+        '';
+  }
     {
       name = "react_proxy___react_proxy_1.1.8.tgz";
       path = fetchurl {
