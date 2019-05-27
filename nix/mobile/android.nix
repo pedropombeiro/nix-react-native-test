@@ -95,7 +95,7 @@ let
       # Patch prepareJSC so that it doesn't try to download from registry
       substituteInPlace node_modules/react-native/ReactAndroid/build.gradle \
         --replace "prepareJSC(dependsOn: downloadJSC)" "prepareJSC(dependsOn: createNativeDepsDirectories)" \
-        --replace "def jscTar = tarTree(downloadJSC.dest)" "def jscTar = tarTree(new File(\"$(pwd)/deps/${jsc-filename}.tar.gz\"))"
+        --replace "def jscTar = tarTree(downloadJSC.dest)" "def jscTar = tarTree(new File(\"../../../deps/${jsc-filename}.tar.gz\"))"
     '';
     buildPhase = ''
       export JAVA_HOME="${openjdk}"
@@ -110,7 +110,8 @@ let
 
       export GRADLE_USER_HOME=$(mktemp -d)
       ( cd android
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${stdenv.lib.makeLibraryPath [ zlib ]} gradle --no-daemon react-native-android:installArchives
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${stdenv.lib.makeLibraryPath [ zlib ]} \
+          gradle --no-daemon react-native-android:installArchives
       )
     '';
     installPhase = ''
@@ -121,7 +122,7 @@ let
       # Patch prepareJSC so that it doesn't subsequently try to build NDK libs
       substituteInPlace $out/node_modules/react-native/ReactAndroid/build.gradle \
         --replace "packageReactNdkLibs(dependsOn: buildReactNdkLib, " "packageReactNdkLibs(" \
-        --replace "./deps/${jsc-filename}.tar.gz" "${react-native-deps}/deps/${jsc-filename}.tar.gz" 
+        --replace "../../../deps/${jsc-filename}.tar.gz" "${react-native-deps}/deps/${jsc-filename}.tar.gz" 
 
       # Generate Maven directory structure in node_modules/react-native/android from existing cache
       # perl code mavenizes pathes (com.squareup.okio/okio/1.13.0/a9283170b7305c8d92d25aff02a6ab7e45d06cbe/okio-1.13.0.jar -> com/squareup/okio/okio/1.13.0/okio-1.13.0.jar)
